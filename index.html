@@ -3,209 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flying Bird Animation</title>
+    <title>Angry Birds Clone - High Graphics Physics Game</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .scene {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        .tree {
-            position: absolute;
-            bottom: 0;
-            right: 20%;
-        }
-
-        .trunk {
-            width: 60px;
-            height: 250px;
-            background: #8B4513;
-            border-radius: 10px;
-            position: relative;
-            left: 70px;
-        }
-
-        .branch {
-            position: absolute;
-            top: 50px;
-            right: -80px;
-            width: 150px;
-            height: 15px;
-            background: #8B4513;
-            border-radius: 10px;
-            transform: rotate(-10deg);
-        }
-
-        .leaves {
-            position: absolute;
-            top: -100px;
-            left: 20px;
-            width: 150px;
-            height: 150px;
-            background: #228B22;
-            border-radius: 50%;
-        }
-
-        .leaves::before {
-            content: '';
-            position: absolute;
-            top: 30px;
-            left: -50px;
-            width: 120px;
-            height: 120px;
-            background: #2E8B57;
-            border-radius: 50%;
-        }
-
-        .leaves::after {
-            content: '';
-            position: absolute;
-            top: 30px;
-            right: -50px;
-            width: 120px;
-            height: 120px;
-            background: #32CD32;
-            border-radius: 50%;
-        }
-
-        .bird {
-            position: absolute;
-            left: 10%;
-            top: 30%;
-            animation: fly 5s ease-in-out forwards;
-        }
-
-        .bird-body {
-            width: 40px;
-            height: 30px;
-            background: #FF6B35;
-            border-radius: 50% 50% 50% 50%;
-            position: relative;
-        }
-
-        .bird-head {
-            width: 25px;
-            height: 25px;
-            background: #FF8C42;
-            border-radius: 50%;
-            position: absolute;
-            top: -8px;
-            left: 25px;
-        }
-
-        .beak {
-            width: 0;
-            height: 0;
-            border-top: 5px solid transparent;
-            border-bottom: 5px solid transparent;
-            border-left: 12px solid #FFA500;
-            position: absolute;
-            top: 7px;
-            right: -10px;
-        }
-
-        .eye {
-            width: 5px;
-            height: 5px;
-            background: #000;
-            border-radius: 50%;
-            position: absolute;
-            top: 8px;
-            right: 5px;
-        }
-
-        .wing {
-            position: absolute;
-            top: 10px;
-            left: 5px;
-            width: 30px;
-            height: 15px;
-            background: #D9534F;
-            border-radius: 50% 50% 0 0;
-            transform-origin: left center;
-            animation: flap 0.3s ease-in-out infinite;
-        }
-
-        .tail {
-            position: absolute;
-            top: 15px;
-            left: -15px;
-            width: 0;
-            height: 0;
-            border-top: 10px solid transparent;
-            border-bottom: 10px solid transparent;
-            border-right: 20px solid #D9534F;
-        }
-
-        @keyframes fly {
-            0% {
-                left: 10%;
-                top: 30%;
-            }
-            80% {
-                left: 65%;
-                top: 35%;
-            }
-            100% {
-                left: 68%;
-                top: 38%;
-            }
-        }
-
-        @keyframes flap {
-            0%, 100% {
-                transform: rotate(-20deg);
-            }
-            50% {
-                transform: rotate(10deg);
-            }
-        }
-
-        .bird.resting .wing {
-            animation: none;
-            transform: rotate(-5deg);
+        body { margin: 0; padding: 0; background: #87CEEB; overflow: hidden; }
+        canvas { display: block; }
+        #instructions {
+            position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 10px; font-family: Arial, sans-serif;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
-    <div class="scene">
-        <div class="bird" id="bird">
-            <div class="bird-body">
-                <div class="tail"></div>
-                <div class="wing"></div>
-                <div class="bird-head">
-                    <div class="beak"></div>
-                    <div class="eye"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="tree">
-            <div class="leaves"></div>
-            <div class="trunk">
-                <div class="branch"></div>
-            </div>
-        </div>
+    <div id="instructions">
+        Drag the red bird back on the slingshot and release to launch!<br>
+        Destroy the green pigs and structures to win the level.
     </div>
-
     <script>
-        const bird = document.getElementById('bird');
-        
-        setTimeout(() => {
-            bird.classList.add('resting');
-        }, 5000);
+        const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Constraint, Events } = Matter;
+
+        let engine, runner, mouseConstraint;
+        let bird, slingshot;
+        let ground, boxes = [], pigs = [];
+        let launched = false;
+        let score = 0;
+
+        function preload() {
+            // High-quality placeholder images (replace with actual Angry Birds-style sprites for better graphics)
+            birdImg = loadImage('https://i.imgur.com/3Z1Z1Z1.png'); // Example red bird (replace with better)
+            pigImg = loadImage('https://i.imgur.com/9Z9Z9Z9.png'); // Example pig
+            boxImg = loadImage('https://i.imgur.com/woodbox.png'); // Wood box texture
+            bgImg = loadImage('https://i.imgur.com/skybackground.jpg'); // Sky background
+        }
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            
+            engine = Engine.create();
+            engine.gravity.y = 0.8; // Realistic gravity
+
+            // Slingshot position
+            slingshot = { x: 150, y: height - 200 };
+
+            // Create bird
+            bird = Bodies.circle(slingshot.x, slingshot.y, 20, {
+                density: 0.04,
+                restitution: 0.8,
+                render: { sprite: { texture: 'https://i.imgur.com/redbird.png', xScale: 0.1, yScale: 0.1 } } // Better bird image
+            });
+            Composite.add(engine.world, bird);
+
+            // Ground
+            ground = Bodies.rectangle(width / 2, height - 10, width, 60, { isStatic: true });
+            Composite.add(engine.world, ground);
+
+            // Structures (boxes and pigs) - high graphics with multiple levels
+            createStructure();
+
+            // Mouse control for slingshot
+            let mouse = Mouse.create(canvas.elt);
+            mouseConstraint = MouseConstraint.create(engine, { mouse: mouse });
+            Composite.add(engine.world, mouseConstraint);
+
+            // Slingshot constraint
+            let slingConstraint = Constraint.create({
+                pointA: { x: slingshot.x, y: slingshot.y },
+                bodyB: bird,
+                stiffness: 0.05,
+                length: 5
+            });
+            Composite.add(engine.world, slingConstraint);
+
+            // Detect collisions for scoring
+            Events.on(engine, 'collisionStart', function(event) {
+                event.pairs.forEach(pair => {
+                    if (pair.bodyA === bird || pair.bodyB === bird) {
+                        if (pair.bodyA.label === 'pig' || pair.bodyB.label === 'pig') {
+                            score += 1000;
+                            let pig = pair.bodyA.label === 'pig' ? pair.bodyA : pair.bodyB;
+                            Composite.remove(engine.world, pig);
+                        }
+                    }
+                });
+            });
+
+            runner = Runner.create();
+            Runner.run(runner, engine);
+        }
+
+        function createStructure() {
+            // Stack of wood boxes and pigs
+            let baseX = width - 300;
+            let baseY = height - 100;
+
+            // Base boxes
+            for (let i = 0; i < 5; i++) {
+                let box = Bodies.rectangle(baseX + i * 40, baseY, 40, 40, {
+                    render: { sprite: { texture: 'https://i.imgur.com/wood.png', xScale: 0.15, yScale: 0.15 } }
+                });
+                boxes.push(box);
+                Composite.add(engine.world, box);
+            }
+
+            // Tower
+            for (let i = 0; i < 3; i++) {
+                let box = Bodies.rectangle(baseX + 80, baseY - 50 - i * 50, 100, 20, {
+                    render: { sprite: { texture: 'https://i.imgur.com/plank.png' } }
+                });
+                boxes.push(box);
+                Composite.add(engine.world, box);
+            }
+
+            // Pigs
+            let pig1 = Bodies.circle(baseX + 80, baseY - 150, 25, {
+                label: 'pig',
+                render: { sprite: { texture: 'https://i.imgur.com/greenpig.png', xScale: 0.1, yScale: 0.1 } }
+            });
+            pigs.push(pig1);
+            Composite.add(engine.world, pig1);
+        }
+
+        function draw() {
+            background(bgImg || color(135, 206, 235));
+
+            // Draw slingshot bands
+            if (!launched && mouseIsPressed && mouseConstraint.body === bird) {
+                stroke(100, 50, 0);
+                strokeWeight(8);
+                line(slingshot.x - 20, slingshot.y, bird.position.x, bird.position.y);
+                line(slingshot.x + 20, slingshot.y, bird.position.x, bird.position.y);
+            }
+
+            // Draw score
+            fill(255);
+            textSize(32);
+            text(`Score: ${score}`, 20, 50);
+
+            // Win condition
+            if (pigs.length === 0) {
+                textSize(64);
+                fill(0, 255, 0);
+                text('You Win!', width / 2 - 200, height / 2);
+            }
+
+            // Reset if bird stops
+            if (launched && bird.speed < 0.5 && bird.position.y > height - 100) {
+                launched = false;
+                Matter.Body.setPosition(bird, { x: slingshot.x, y: slingshot.y });
+                Matter.Body.setVelocity(bird, { x: 0, y: 0 });
+            }
+
+            // Launch detection
+            if (mouseConstraint.body === bird && !mouseIsPressed && !launched && dist(mouseX, mouseY, slingshot.x, slingshot.y) > 50) {
+                launched = true;
+            }
+        }
+
+        function mouseReleased() {
+            if (!launched && mouseConstraint.body === bird) {
+                setTimeout(() => {
+                    // Remove sling after launch
+                    if (mouseConstraint.constraint.bodyB === bird) {
+                        Composite.remove(engine.world, mouseConstraint.constraint);
+                    }
+                }, 100);
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
     </script>
 </body>
 </html>
